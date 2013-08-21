@@ -54,14 +54,13 @@ namespace WindowsFormsApplication1
             charCache = new Dictionary<char, GlyphData>();
 
             Library lib = new Library();
-            Face fontFace = new Face(lib, "fonts/roboto-light.ttf");
+            Face fontFace = new Face(lib, "fonts/roboto-regular.ttf");
 
-            fontFace.SetCharSize(0, 30 * 64, 0, 96);
+            fontFace.SetCharSize(0, 18 * 64, 0, 96);
             
             int wX          = 0;
             int wY          = 0;
-            int wyWB        = 0;
-
+            
             int xB          = 0;
 
             int pX          = 0;
@@ -91,11 +90,15 @@ namespace WindowsFormsApplication1
                         data.buffer = bitmap.BufferData;
 
                     data.charIndex  = current;
+
+                    data.metrics    = fontFace.Glyph.Metrics;
+                    
                     data.height     = fontFace.Glyph.Metrics.Height / 64;
                     data.width      = fontFace.Glyph.Metrics.Width / 64;
-                    data.metrics    = fontFace.Glyph.Metrics;
+                    
                     data.pitch      = fontFace.Glyph.BitmapTop;
                     data.forward    = fontFace.Glyph.BitmapLeft;
+
                     data.aX         = fontFace.Glyph.Metrics.HorizontalAdvance;
                     data.aY         = fontFace.Glyph.Metrics.VerticalAdvance;
 
@@ -118,13 +121,11 @@ namespace WindowsFormsApplication1
                     data.kY = kInfo.Y / 64;
                 }
 
-                wyWB    = Math.Max(data.pitch, wyWB);
-                xB      = Math.Max(data.height - data.pitch, xB);
-                
-                wY      = wyWB + xB;
-
                 previous = current;
             }
+
+            xB = Math.Abs(fontFace.Size.Metrics.Descender / 64);
+            wY = fontFace.Size.Metrics.Height / 64;
 
             DateTime iTimeF = DateTime.Now;
 
@@ -146,11 +147,7 @@ namespace WindowsFormsApplication1
 
             for (int i = 0; i < hello.Length; i++)
             {
-                var item = hello[i];
-
-                current = fontFace.GetCharIndex(item);
-
-                GlyphData pdata = charCache[item];
+                GlyphData pdata = charCache[hello[i]];
 
                 for (int y = 0; y < pdata.height; y++)
                 {
@@ -159,15 +156,17 @@ namespace WindowsFormsApplication1
                         int fx = x + pX + pdata.forward;
                         int fy = wY - pdata.pitch + y - xB;
 
+                        fy = y + (wY - pdata.pitch - xB);
+
                         if (fy < 0 || fy >= wY)
                         {
-                            Console.WriteLine("Overflow on fy! :(");
+                            //Console.WriteLine("Overflow on fy! :(");
                             continue;
                         }
 
                         if (fx < 0 || fx >= wX)
                         {
-                            Console.WriteLine("Overflow on fx! :(");
+                            //Console.WriteLine("Overflow on fx! :(");
                             continue;
                         }
 
@@ -176,18 +175,12 @@ namespace WindowsFormsApplication1
                         if (fdata >= 255)
                             fdata = 255;
 
-                        map[fy * wX + fx] = (fdata << 24) | (0 << 16) | (0 << 8) | 0;
+                        map[fy * wX + fx] = (fdata << 24);
                     }
                 }
 
                 pX += pdata.aX / 64;
-
-                if (fontFace.HasKerning && previous != 0 && current != 0)
-                {
-                    pX += pdata.kX;
-                }
-
-                previous = current;
+                pX += pdata.kX;
             }
 
             BitmapData bData = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height), ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
